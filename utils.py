@@ -23,10 +23,11 @@ class PatchExtractor:
     PatchExtractor: class used to extract and possibly augment patches from images.
     """
 
-    def __init__(self, patch_size):
+    def __init__(self, patch_size, output_shape):
         self.patch_size = patch_size
+        self.output_shape = output_shape
 
-    def get_patch(self, image, location):
+    def get_patch(self, image, location, isOutput):
         """
         image: a numpy array representing the input image
         location: a tuple with an z, y, and x coordinate
@@ -36,8 +37,12 @@ class PatchExtractor:
 
         z, y, x = location
         c, h, w = self.patch_size
+        patch = np.zeros(self.patch_size + (1,))
+        if isOutput:
+            patch = np.zeros(self.output_shape + (1,))
+            c, h, w = self.output_shape
         try:
-            patch = image[int(z - (c / 2)):int(z + (c / 2)), int(y - (h / 2)):int(y + (h / 2)),
+            patch[:,:,:,0] = image[int(z - (c / 2)):int(z + (c / 2)), int(y - (h / 2)):int(y + (h / 2)),
                     int(x - (w / 2)):int(x + (w / 2))]
         except:
             print("Patch out of boundary, please make sure that the patch location is not out of boundary.")
@@ -100,15 +105,15 @@ class BatchCreator:
             if i < fc_nr:
                 z = fc_grid[i % fc_grid_size]
                 (z, y, x) = self.getCoordinates(fc_slices_dict, z, img_array)
-                x_data[i] = self.patch_extractor.get_patch(img_array, (z, y, x))
+                x_data[i] = self.patch_extractor.get_patch(img_array, (z, y, x), False)
                 y_data[i, 0, 0, 0, 2] = 1
-                fissure_data[i] = self.patch_extractor.get_patch(lbl_array, (z, y, x))
+                fissure_data[i] = self.patch_extractor.get_patch(lbl_array, (z, y, x), True)
             elif ((i >= fc_nr) and (i < (fc_nr + fi_nr))):
                 z = fi_grid[i % fi_grid_size]
                 (z, y, x) = self.getCoordinates(fi_slices_dict, z, img_array)
-                x_data[i] = self.patch_extractor.get_patch(img_array, (z, y, x))
+                x_data[i] = self.patch_extractor.get_patch(img_array, (z, y, x), False)
                 y_data[i, 0, 0, 0, 1] = 1
-                fissure_data[i] = self.patch_extractor.get_patch(lbl_array, (z, y, x))
+                fissure_data[i] = self.patch_extractor.get_patch(lbl_array, (z, y, x), True)
             else:
                 if background_counter == 4:
                     background_index += 1
@@ -116,9 +121,9 @@ class BatchCreator:
                 z = b_grid[background_index]
                 grid = b_grid_dict[z][background_counter]
                 (z, y, x) = self.getBackground(grid, msk_array, z)
-                x_data[i] = self.patch_extractor.get_patch(img_array, (z, y, x))
+                x_data[i] = self.patch_extractor.get_patch(img_array, (z, y, x), False)
                 y_data[i, 0, 0, 0, 0] = 1
-                fissure_data[i] = self.patch_extractor.get_patch(lbl_array, (z, y, x))
+                fissure_data[i] = self.patch_extractor.get_patch(lbl_array, (z, y, x), True)
                 background_counter += 1
 
         self.examined_images.append(img_index)
@@ -134,11 +139,11 @@ class BatchCreator:
 
     def initializeOutputArrays(self, batch_size):
         # patch array
-        x_data = np.zeros((batch_size, *self.patch_extractor.patch_size))
+        x_data = np.zeros((batch_size, *self.patch_extractor.patch_size,1))
         # label array (one-hot structure)
         y_data = np.zeros((batch_size, 1, 1, 1, 3))
         # fissure mask patch array
-        fissure_data = np.zeros((batch_size, *self.patch_extractor.patch_size))
+        fissure_data = np.zeros((batch_size, *self.patch_extractor.output_shape,1))
 
         return x_data, y_data, fissure_data
 
@@ -159,7 +164,7 @@ class BatchCreator:
     def fissureGrid(self, slicesDict):
         z_size, _, _ = self.patch_extractor.patch_size
         slices = sorted(list(slicesDict.keys()))
-        z_grid = list(chunks(slices, int(z_size * 1.5)))
+        z_grid = list(self.chunks(slices, int(z_size * 1.5)))
         z_medians = [int(np.median(chunk)) for chunk in z_grid]
         grid_size = len(z_medians)
         return z_medians, grid_size
@@ -168,7 +173,7 @@ class BatchCreator:
         z_max, y_max, x_max = img_shape
         z_size, y_size, x_size = self.patch_extractor.patch_size
         slices = list(range(z_max))
-        z_grid = list(chunks(slices, int(len(slices) / b_nr)))
+        z_grid = list(self.chunks(slices, int(len(slices) / b_nr)))
         z_medians = [int(np.median(chunk)) for chunk in z_grid]
         grid_size = len(z_medians)
         z_grid_dict = {}
