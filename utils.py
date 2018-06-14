@@ -91,7 +91,7 @@ class BatchCreator:
 
         # get list of potential fissure complete and incomplete coords and the number of patches to generate
         # for fissure complete, incomplete and background
-        fc_coords, fi_coords, fc_nr, fi_nr, b_nr = self.checkEmpty(minima,fc_slices_dict,fi_slices_dict)
+        fc_coords, fi_coords, fc_nr, fi_nr, b_nr = self.checkEmpty(batch_size,minima,fc_slices_dict,fi_slices_dict)
 
         # get list of potential background coords
         b_coords = self.getBackground(msk_array,minima)
@@ -181,7 +181,7 @@ class BatchCreator:
             print("Error: could not find background patch for slice %s, with y_minimum set to %s, y_maximum set to %s, x_minimum set to %s and x_maximum set to %s"%(z,y_minimum,y_maximum,x_minimum,x_maximum))
         return filtered_coordinates
     
-    def checkEmpty(self,minima,fc_slices_dict,fi_slices_dict):
+    def checkEmpty(self,batch_sizeminima,fc_slices_dict,fi_slices_dict):
         fc_coords = self.filterCoords(minima,fc_slices_dict)
         fi_coords = []
         
