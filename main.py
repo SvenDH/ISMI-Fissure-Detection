@@ -1,7 +1,6 @@
 import os, random
 import ntpath
 import SimpleITK
-from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 from utils import PatchExtractor, BatchCreator #custom file for utilities
@@ -185,10 +184,15 @@ if __name__ == "__main__":
     modelcheck = ModelCheckpoint("weights-"+str(timeNow)+".hdf5", monitor='val_loss', verbose=0, save_best_only=True, 
                                  save_weights_only=False, mode='auto', period=1)
 
+
+    slacklogger = callbacks.SlackLogger()
+    tensorboard = callbacks.TensorBoard(log_dir='./logs/log-'+str(timeNow), batch_size=batch_size)
+
+
     model.fit_generator(generator=train_generator,
                         validation_data=validation_generator,
                         steps_per_epoch=90,
                         epochs=10,
                         validation_steps=10,
-                        callbacks=[modelcheck])
+                        callbacks=[modelcheck, slacklogger, tensorboard])
 

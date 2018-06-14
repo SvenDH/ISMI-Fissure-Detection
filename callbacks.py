@@ -28,6 +28,7 @@ class SlackLogger(Callback):
 
 	def on_train_begin(self, logs={}):
 		self.times = []
+		sendSlack("----- Started New Training ------")
 
 	def on_batch_end(self, batch, logs={}):
 		self.losses.append(logs.get('loss'))
