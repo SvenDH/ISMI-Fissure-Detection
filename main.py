@@ -13,7 +13,6 @@ from keras import backend as K
 from keras.engine import Input, Model
 from keras.layers import Conv3D, MaxPooling3D, Activation, Deconvolution3D, Cropping3D, UpSampling3D, BatchNormalization
 from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint, TensorBoard
 
 
 from keras.layers.merge import concatenate
@@ -57,44 +56,7 @@ def dice_coefficient(y_true, y_pred, smooth=1.):
 def dice_coefficient_loss(y_true, y_pred):
     return -dice_coefficient(y_true, y_pred)
 
-class Logger(Callback):
 
-    def __init__(self, validation_data, patch_size, stride=1):
-        self.val_imgs = pad(validation_data.imgs, patch_size) / 255.
-        self.val_lbls = downscale(validation_data.lbls, stride) > 0
-        self.val_msks = downscale(validation_data.msks, stride) > 0
-         
-        self.losses = []
-        self.dices = []
-        self.best_dice = 0
-        self.best_model = None
-    
-    def on_batch_end(self, batch, logs={}):
-        self.losses.append(logs.get('loss'))
-    
-    def on_epoch_end(self, batch, logs={}):
-        dice = self.validate()
-        self.dices.append([len(self.losses), dice])
-        if dice > self.best_dice:
-            self.best_dice = dice
-            self.best_model = self.model.get_weights()
-        self.plot()
-           
-    def validate(self):
-        predicted_lbls = self.model.predict(self.val_imgs, batch_size=1)[:,:,:,1]>0.5
-        x = self.val_lbls[self.val_msks]
-        y = predicted_lbls[self.val_msks]
-        return calculate_dice(x, y)
-    
-    def plot(self):
-        clear_output()
-        N = len(self.losses)
-        train_loss_plt, = plt.plot(range(0, N), self.losses)
-        dice_plt, = plt.plot(*np.array(self.dices).T)
-        plt.legend((train_loss_plt, dice_plt), 
-                   ('training loss', 'validation dice'))
-        plt.show()
-        
 def create_network(input_shape, features=32):
     
     # Downward path
@@ -214,14 +176,15 @@ if __name__ == "__main__":
 
     #logger = Logger(data, patch_size, stride=88) #on training data instead of validation data
     timeNow = time.strftime("%e%m-%H%M%S")
-    tensorboard = TensorBoard(log_dir='./logs/'+timeNow, batch_size=batch_size, histogram_freq=1, embeddings_freq=0, write_images=True)
-    modelcheck = ModelCheckpoint("weights-"+str(timeNow)+".hdf5", monitor='val_loss', verbose=0, save_best_only=False, 
+    #tensorboard = TensorBoard(log_dir='./logs/'+timeNow, batch_size=batch_size, histogram_freq=1, embeddings_freq=0, write_images=True)
+    modelcheck = callbacks.ModelCheckpoint("weights-"+str(timeNow)+".hdf5", monitor='val_loss', verbose=0, save_best_only=True, 
                                  save_weights_only=False, mode='auto', period=1)
+    slacklogger = callbacks.SlackLogger()
 
     model.fit_generator(generator=train_generator,
                         validation_data=validation_generator,
                         steps_per_epoch=90,
                         epochs=10,
                         validation_steps=50,
-                        callbacks=[tensorboard, modelcheck])
+                        callbacks=[modelcheck, slacklogger])
 
