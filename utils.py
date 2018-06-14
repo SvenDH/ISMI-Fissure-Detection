@@ -181,7 +181,7 @@ class BatchCreator:
             print("Error: could not find background patch for slice %s, with y_minimum set to %s, y_maximum set to %s, x_minimum set to %s and x_maximum set to %s"%(z,y_minimum,y_maximum,x_minimum,x_maximum))
         return filtered_coordinates
     
-    def checkEmpty(self,batch_size,minima,fc_slices_dict,fi_slices_dict):
+    def checkEmpty(self,minima,fc_slices_dict,fi_slices_dict):
         fc_coords = self.filterCoords(minima,fc_slices_dict)
         fi_coords = []
         
