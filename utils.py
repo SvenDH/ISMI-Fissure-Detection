@@ -52,6 +52,8 @@ class BatchCreator:
     def __init__(self,patch_extractor,dataset,patch_indices,batch_division):
         self.patch_extractor = patch_extractor
         self.patch_size = self.patch_extractor.patch_size
+
+        self.dataset = dataset
         
         self.img_list = dataset['image'].values
         self.lbl_list = dataset['fissuremask'].values
@@ -61,7 +63,7 @@ class BatchCreator:
         self.b_indices = dataset.index[dataset['label'] == "b"].tolist()
         self.c_indices = dataset.index[dataset['label'] == "c"].tolist()
         
-        self.img_indices = self.a_indices + self.b_indices + self.c_indices
+        self.img_indices = self.dataset.index.values.tolist()
         
         self.fc_indices = patch_indices[0]
         self.fi_indices = patch_indices[1]
@@ -72,7 +74,7 @@ class BatchCreator:
         
     def create_batch(self, batch_size):
         
-        if len(self.examined_images) == len(self.a_indices + self.b_indices + self.c_indices):
+        if len(self.examined_images) == len(self.img_indices):
             self.examined_images = []
             
         img_index = self.pickImage()
@@ -130,15 +132,15 @@ class BatchCreator:
     
     def img2array(self, img_index):
         # compute numpy array from image
-        img_path = self.img_list[img_index]
+        img_path = self.dataset.iloc[self.img_indices.index(img_index)]['image']
         img_array = readImg(img_path)
         
         # compute numpy array from fissure mask
-        lbl_path = self.lbl_list[img_index]
+        lbl_path = self.dataset.iloc[self.img_indices.index(img_index)]['fissuremask']
         lbl_array = readImg(lbl_path)
         
         # compute numpy array from lung mask
-        msk_path = self.msk_list[img_index]
+        msk_path = self.dataset.iloc[self.img_indices.index(img_index)]['lungmask']
         msk_array = readImg(msk_path)
         return img_array, lbl_array, msk_array
     
@@ -179,7 +181,7 @@ class BatchCreator:
             print("Error: could not find background patch for slice %s, with y_minimum set to %s, y_maximum set to %s, x_minimum set to %s and x_maximum set to %s"%(z,y_minimum,y_maximum,x_minimum,x_maximum))
         return filtered_coordinates
     
-    def checkEmpty(self,batch_size,minima,fc_slices_dict,fi_slices_dict):
+    def checkEmpty(self,batch_sizeminima,fc_slices_dict,fi_slices_dict):
         fc_coords = self.filterCoords(minima,fc_slices_dict)
         fi_coords = []
         

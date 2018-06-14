@@ -48,7 +48,7 @@ class SlackLogger(Callback):
 			self.best_model = self.model.get_weights()
 		self.plot()
 
-	def on_train_end(self, logs{}):
+	def on_train_end(self, logs={}):
 
 		sendSlack("-------- Results of Training ---------")
 		sendSlack("Average time per epoch (secs): " + str(np.mean(self.times)))
