@@ -13,6 +13,7 @@ from keras import backend as K
 from keras.engine import Input, Model
 from keras.layers import Conv3D, MaxPooling3D, Activation, Deconvolution3D, Cropping3D, UpSampling3D, BatchNormalization
 from keras.optimizers import Adam
+from keras.callbacks import ModelCheckpoint, TensorBoard
 
 
 from keras.layers.merge import concatenate
@@ -36,7 +37,7 @@ patch_size = (132,132,116) # smallest possible patch size is (108,108,108)
 output_shape = (44,44,28) # smallest possible output shape is (20,20,20)
 patch_extractor = PatchExtractor(patch_size, output_shape)
 batch_size = 16 # 16 is max due to gpu memory errors
-batch_division = (np.ceil(batch_size/2),np.ceil(batch_size/2))
+batch_division = (np.ceil(batch_size/3),np.ceil(batch_size/3))
 
 batch_creator = BatchCreator(patch_extractor, train_set, patch_indices, batch_division)
 x,y = batch_creator.create_batch(batch_size) # batch testing
@@ -48,8 +49,17 @@ validation_generator = batch_creator.get_generator(batch_size)
 
 # Loss calculation for 3D U-net
 def dice_coefficient(y_true, y_pred, smooth=1.):
+    bglabel = 0
+    cflabel = 2
+    iflabel = 4
+    importance_factors = [0.001, 0.5, 0.5]
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
+    
+    penalty_mask = (y_true_f == bglabel) * importance_factors[0] 
+    + (y_true_f == cflabel) * importance_factors[1] 
+    + (y_true_f == iflabel) * importance_factors[2] 
+    
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
@@ -63,7 +73,6 @@ def create_network(input_shape, features=32):
     
     levels = list()
     inputs = Input(input_shape)
-    
     # Block 1
     layer1 = Conv3D(features*(2**0), (3,3,3), padding='valid', strides=1)(inputs)
     layer1 = BatchNormalization()(layer1)
@@ -73,7 +82,6 @@ def create_network(input_shape, features=32):
     layer2 = Activation('relu')(layer2)
     pool = MaxPooling3D(pool_size=(2,2,2))(layer2)
     levels.append([layer1, layer2, pool])
-    
     # Block 2
     layer1 = Conv3D(features*(2**1), (3,3,3), padding='valid', strides=1)(pool)
     layer1 = BatchNormalization()(layer1)
@@ -83,7 +91,6 @@ def create_network(input_shape, features=32):
     layer2 = Activation('relu')(layer2)
     pool = MaxPooling3D(pool_size=(2,2,2))(layer2)
     levels.append([layer1, layer2, pool])
-    
     # Block 3
     layer1 = Conv3D(features*(2**2), (3,3,3), padding='valid', strides=1)(pool)
     layer1 = BatchNormalization()(layer1)
@@ -93,7 +100,6 @@ def create_network(input_shape, features=32):
     layer2 = Activation('relu')(layer2)
     pool = MaxPooling3D(pool_size=(2,2,2))(layer2)
     levels.append([layer1, layer2, pool])
-    
     # Block 4
     layer1 = Conv3D(features*(2**3), (3,3,3), padding='valid', strides=1)(pool)
     layer1 = BatchNormalization()(layer1)
@@ -142,7 +148,6 @@ def create_network(input_shape, features=32):
     layer2 = Conv3D(features*(2**1), (3,3,3), padding='valid', strides=1)(layer1)
     layer2 = BatchNormalization()(layer2)
     layer2 = Activation('relu')(layer2)
-    
     # Block 7
     layer0 = UpSampling3D(size=2)(layer2)
     #layer0 = Conv3D(32*(2**0), (2,2,2))(layer0)
@@ -166,7 +171,7 @@ def create_network(input_shape, features=32):
     final = Activation('softmax')(final)
     model = Model(inputs=inputs, outputs=final)
 
-    model.compile(optimizer=Adam(lr=0.00001), loss=dice_coefficient_loss, metrics=[dice_coefficient])
+    model.compile(optimizer=Adam(lr=0.0001), loss=dice_coefficient_loss, metrics=[dice_coefficient])
     model.summary()
     return model
 
@@ -177,14 +182,13 @@ if __name__ == "__main__":
     #logger = Logger(data, patch_size, stride=88) #on training data instead of validation data
     timeNow = time.strftime("%e%m-%H%M%S")
     #tensorboard = TensorBoard(log_dir='./logs/'+timeNow, batch_size=batch_size, histogram_freq=1, embeddings_freq=0, write_images=True)
-    modelcheck = callbacks.ModelCheckpoint("weights-"+str(timeNow)+".hdf5", monitor='val_loss', verbose=0, save_best_only=True, 
+    modelcheck = ModelCheckpoint("weights-"+str(timeNow)+".hdf5", monitor='val_loss', verbose=0, save_best_only=True, 
                                  save_weights_only=False, mode='auto', period=1)
-    slacklogger = callbacks.SlackLogger()
 
     model.fit_generator(generator=train_generator,
                         validation_data=validation_generator,
                         steps_per_epoch=90,
                         epochs=10,
-                        validation_steps=50,
-                        callbacks=[modelcheck, slacklogger])
+                        validation_steps=10,
+                        callbacks=[modelcheck])
 
