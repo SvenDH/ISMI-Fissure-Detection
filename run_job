@@ -16,4 +16,4 @@ module load gcc/4.9.2
 
 #$SLURM_SUBMIT_HOST
 
-python main.py
+python3 main.py
