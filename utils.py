@@ -21,7 +21,8 @@ class BatchGenerator(keras.utils.Sequence):
         self.images = [read_img(path) for path in data['image'].values]
         self.fissure_masks = [read_img(path) for path in data['fissuremask'].values]
         self.lung_masks = [read_img(path) for path in data['lungmask'].values]
-        indices, labels = [], []  # Generate coordinates at every step leaving a border of half the patch size
+        # Generate coordinates at every step leaving a border of half the patch size
+        indices, labels = [], []
         zh, yh, xh = int(patch_size[0]/2), int(patch_size[1]/2), int(patch_size[2]/2)
         for i, image in enumerate(self.images):
             c, h, w = image.shape
@@ -29,16 +30,15 @@ class BatchGenerator(keras.utils.Sequence):
                 indices.append([i, z, y, x])  # The label of a patch is the highest value occurring in the fissure mask
                 labels.append(np.amax(self.get_patch((z, y, x), self.fissure_masks[i], self.output_size)))
         self.indices, self.labels = np.array(indices), np.array(labels)
-        self.samples = []
+        self.samples = self.indices
 
     def __getitem__(self, index):
         """Get a new batch of input images and corresponding fracture masks."""
         idxs = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-        X = np.empty((self.batch_size, *self.patch_size, 1))
-        y = np.empty((self.batch_size, *self.output_size, 1))
+        X, y = np.empty((self.batch_size, *self.patch_size, 1)), np.empty((self.batch_size, *self.output_size, 1))
         for i, idx in enumerate(idxs):
-            X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:,:,:,np.newaxis]
-            y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:,:,:,np.newaxis]
+            X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:, :, :, np.newaxis]
+            y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:, :, :, np.newaxis]
         return X, y
 
     def __len__(self):
@@ -49,8 +49,6 @@ class BatchGenerator(keras.utils.Sequence):
         """If sample function is provided apply sampling function to indices and labels to get new samples."""
         if self.sampling:
             self.samples, _ = self.sampling(self.indices, self.labels)
-        else:
-            self.samples = self.indices
 
     @staticmethod
     def get_patch(location, image, patch_size):
