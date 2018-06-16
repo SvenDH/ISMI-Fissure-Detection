@@ -13,31 +13,23 @@ from keras import backend as K
 
 class BatchGenerator(keras.utils.Sequence):
     """Generator for keras that provides patches of images with corresponding fissure masks."""
-    
-    def __init__(self, data, patch_size, step_size=(10, 10, 10), batch_size=8, sampling=None):
+
+    def __init__(self, data, patch_size, step=(10, 10, 10), batch_size=8, sampling=None):
         """Load all images and generate a list of indices for patch locations."""
         self.patch_size, self.data, self.batch_size, self.sampling = patch_size, data, batch_size, sampling
         self.output_size = get_output_size(patch_size)
         self.images = [read_img(path) for path in data['image'].values]
         self.fissure_masks = [read_img(path) for path in data['fissuremask'].values]
         self.lung_masks = [read_img(path) for path in data['lungmask'].values]
-        self.indices, self.labels = self.__generate_indices(self.images, patch_size, step_size)
-        self.samples = []
-
-    def __generate_indices(self, images, patch_size, step):
-        """Generates a list of patch locations with corresponding labels for all images."""
-        indices, labels = [], []
+        indices, labels = [], []  # Generate coordinates at every step leaving a border of half the patch size
         zh, yh, xh = int(patch_size[0]/2), int(patch_size[1]/2), int(patch_size[2]/2)
-        for i, image in enumerate(images):
-            c, h, w = image.shape  # Generate coordinates at every step leaving a border of half the patch size
+        for i, image in enumerate(self.images):
+            c, h, w = image.shape
             for z, y, x in product(range(zh, c-zh, step[0]), range(yh, h-yh, step[1]), range(xh, w-xh, step[2])):
                 indices.append([i, z, y, x])  # The label of a patch is the highest value occurring in the fissure mask
                 labels.append(np.amax(self.get_patch((z, y, x), self.fissure_masks[i], self.output_size)))
-        return np.array(indices), np.array(labels)
-
-    def __len__(self):
-        """Amount of batches per epoch."""
-        return int(np.floor(len(self.samples) / self.batch_size))
+        self.indices, self.labels = np.array(indices), np.array(labels)
+        self.samples = []
 
     def __getitem__(self, index):
         """Get a new batch of input images and corresponding fracture masks."""
@@ -49,12 +41,9 @@ class BatchGenerator(keras.utils.Sequence):
             y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:,:,:,np.newaxis]
         return X, y
 
-    @staticmethod
-    def get_patch(location, image, patch_size):
-        """Get part of image array centered on location with patch_size as size."""
-        z, y, x = location
-        c, h, w = patch_size
-        return image[int(z-(c/2)):int(z+(c/2)), int(y-(h/2)):int(y+(h/2)), int(x-(w/2)):int(x+(w/2))]
+    def __len__(self):
+        """Amount of batches per epoch."""
+        return int(np.floor(len(self.samples) / self.batch_size))
 
     def on_epoch_end(self):
         """If sample function is provided apply sampling function to indices and labels to get new samples."""
@@ -62,6 +51,13 @@ class BatchGenerator(keras.utils.Sequence):
             self.samples, _ = self.sampling(self.indices, self.labels)
         else:
             self.samples = self.indices
+
+    @staticmethod
+    def get_patch(location, image, patch_size):
+        """Get part of image array centered on location with patch_size as size."""
+        z, y, x = location
+        c, h, w = patch_size
+        return image[int(z-(c/2)):int(z+(c/2)), int(y-(h/2)):int(y+(h/2)), int(x-(w/2)):int(x+(w/2))]
 
 
 def get_output_size(input_size):
