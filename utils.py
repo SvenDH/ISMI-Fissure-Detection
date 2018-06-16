@@ -22,6 +22,16 @@ class BatchGenerator(keras.utils.Sequence):
         self.indices, self.labels = self.__generate_indices(self.images, patch_size, step_size)
         self.samples = []
 
+    def __generate_indices(self, images, patch_size, step):
+        indices, labels = [], []
+        zh, yh, xh = tuple((np.array(patch_size)/2).astype(int))
+        for i, image in enumerate(images):
+            c, h, w = image.shape
+            for z, y, x in product(range(zh,c-zh,step[0]), range(yh,h-yh,step[1]),range(xh,w-xh,step[2])):
+                indices.append([i,z,y,x])
+                labels.append(np.amax(self.get_patch((z,y,x), self.fissuremasks[i], self.output_size)))
+        return np.array(indices), np.array(labels)
+
     def __len__(self):
         return int(np.floor(len(self.samples) / self.batch_size))
 
@@ -34,27 +44,18 @@ class BatchGenerator(keras.utils.Sequence):
             y[i, ] = self.get_patch(idx[1:], self.fissuremasks[idx[0]], self.output_size)[:, :, :, np.newaxis]
         return X, y
 
-    def on_epoch_end(self):
-        if self.sampling:
-            self.samples, _ = self.sampling(self.indices, self.labels)
-        else:
-            self.samples = self.indices
-
     @staticmethod
     def get_patch(idx, image, patch_size):
         z, y, x = idx
         c, h, w = patch_size
         return image[int(z-(c/2)):int(z+(c/2)),int(y-(h/2)):int(y+(h/2)),int(x-(w/2)):int(x+(w/2))]
 
-    def __generate_indices(self, images, patch_size, step):
-        indices, labels = [], []
-        zh, yh, xh = tuple((np.array(patch_size)/2).astype(int))
-        for i, image in enumerate(images):
-            c, h, w = image.shape
-            for z, y, x in product(range(zh,c-zh,step[0]), range(yh,h-yh,step[1]),range(xh,w-xh,step[2])):
-                indices.append([i,z,y,x])
-                labels.append(np.amax(self.get_patch((z,y,x), self.fissuremasks[i], self.output_size)))
-        return np.array(indices), np.array(labels)
+    def on_epoch_end(self):
+        if self.sampling:
+            self.samples, _ = self.sampling(self.indices, self.labels)
+        else:
+            self.samples = self.indices
+        print('Number of samples: {}'.format(len(self.samples)))
 
 
 def get_output_size(input_size):

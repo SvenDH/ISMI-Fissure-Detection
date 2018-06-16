@@ -21,7 +21,7 @@ for train_index, test_index in splitter.split(data, data['label'].values):
 patch_size = (132,132,116) # smallest possible patch size is (108,108,108)
 batch_size = 6 # 16 is max due to gpu memory errors
 
-sampler = RandomOverSampler()
+sampler = RandomOverSampler(random_state=42)
 
 train_generator = BatchGenerator(train_set, patch_size, batch_size=batch_size, sampling=sampler.fit_sample)
 validation_generator = BatchGenerator(validation_set, patch_size, batch_size=batch_size)
@@ -39,6 +39,8 @@ if __name__ == "__main__":
 
     model.fit_generator(generator=train_generator,
                         validation_data=validation_generator,
+                        steps_per_epoch=10000,
+                        validation_steps=1000,
                         epochs=10,
                         callbacks=[modelcheck, slacklogger, tensorboard],
                         verbose=1)
