@@ -34,7 +34,7 @@ class BatchGenerator(keras.utils.Sequence):
 
     def __getitem__(self, index):
         """Get a new batch of input images and corresponding fracture masks."""
-        idxs = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
+        idxs = self.samples[index * self.batch_size:(index + 1) * self.batch_size]
         X, y = np.empty((self.batch_size, *self.patch_size, 1)), np.empty((self.batch_size, *self.output_size, 1))
         for i, idx in enumerate(idxs):
             X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:, :, :, np.newaxis]
