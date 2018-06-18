@@ -6,7 +6,7 @@ from keras.layers import Conv3D, MaxPooling3D, Activation, Deconvolution3D, Crop
 from keras.optimizers import Adam
 from keras.layers.merge import concatenate
 
-from utils import dice_coefficient, dice_coefficient_loss
+from utils import dice_coefficient, dice_coefficient_loss, weighted_categorical_crossentropy
 
 def unet(input_shape, features=32):
     # Downward path
@@ -112,6 +112,6 @@ def unet(input_shape, features=32):
     final = Activation('softmax')(final)
     model = Model(inputs=inputs, outputs=final)
 
-    model.compile(optimizer=Adam(lr=0.0001), loss=dice_coefficient_loss, metrics=[dice_coefficient])
+    model.compile(optimizer=Adam(lr=0.0001), loss=weighted_categorical_crossentropy, metrics=[dice_coefficient])
     model.summary()
     return model

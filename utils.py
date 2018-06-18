@@ -47,6 +47,7 @@ class BatchGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         """If sample function is provided apply sampling function to indices and labels to get new samples."""
+        print(self.sampling)
         if self.sampling:
             self.samples, _ = self.sampling(self.indices, self.labels)
 
@@ -62,6 +63,7 @@ def batch_balance_sampling(X, y):
     ids_per_label = {}
     for c in np.unique(y):
         ids_per_label[c] = np.where(y==c)
+        np.random.shuffle(ids_per_label)
     print(ids_per_label)
 
     return X, y

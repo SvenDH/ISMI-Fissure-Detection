@@ -1,7 +1,7 @@
 import pandas as pd
 import time
 
-from utils import BatchGenerator, dice_coefficient, dice_coefficient_loss #custom file for utilities
+from utils import BatchGenerator, batch_balance_sampling
 from callbacks import SlackLogger #custom file for callbacks
 from models import unet
 
@@ -19,7 +19,7 @@ for train_index, test_index in splitter.split(data, data['label'].values):
     validation_set = data.loc[test_index]
 
 patch_size = (132,132,116) # smallest possible patch size is (108,108,108)
-batch_size = 6 # 16 is max due to gpu memory errors
+batch_size = 4 # 16 is max due to gpu memory errors
 
 sampler = RandomOverSampler(random_state=42)
 
