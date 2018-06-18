@@ -278,7 +278,30 @@ def load_training_set(folder):
 def get_exact_csv_set(folder, label):
     return pd.read_csv(folder + '/LUT-' + label + '.csv')
 
-
+    #function taken from https://github.com/tensorflow/tensorflow/blob/r1.8/tensorflow/python/keras/_impl/keras/backend.py
+    #adapted to weigh categories
+def weighted_categorical_crossentropy(target, output):
+    #decide on weights
+    bglabel = 0
+    cflabel = 2
+    iflabel = 4
+    
+    weight_values_per_class = [0.001, 0.4, 0.6]
+    #weight_values_per_class = compute_loss_weights(target)
+    weights = (target == bglabel) * weight_values_per_class[0] 
+    + (target == cflabel) * weight_values_per_class[1] 
+    + (target == iflabel) * weight_values_per_class[2] 
+    
+    # scale preds so that the class probas of each sample sum to 1
+    output = output / np.sum(output)
+    # manual computation of crossentropy
+    
+    #epsilon_ = _to_tensor(epsilon(), output.dtype.base_dtype)
+    output = K.clip(output, K.epsilon(), 1. - K.epsilon())
+    
+    return -K.sum(target * K.log(output) * weights)
+	
+	
 def dice_coefficient(y_true, y_pred, smooth=1.):
     """Loss calculation for 3D U-net"""
     bglabel = 0
