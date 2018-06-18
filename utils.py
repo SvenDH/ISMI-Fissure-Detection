@@ -58,6 +58,15 @@ class BatchGenerator(keras.utils.Sequence):
         return image[int(z-(c/2)):int(z+(c/2)), int(y-(h/2)):int(y+(h/2)), int(x-(w/2)):int(x+(w/2))]
 
 
+def batch_balance_sampling(X, y):
+    ids_per_label = {}
+    for c in np.unique(y):
+        ids_per_label[c] = np.where(y==c)
+    print(ids_per_label)
+
+    return X, y
+
+
 def get_output_size(input_size):
     """Calculation to get the output shape of U-Net given the input shape."""
     output_size = (((((((np.floor((np.floor((np.floor((np.array(input_size)-4)/2)-4)/2)-4)/2)-4)*2)-4)*2)-4)*2)-4)
@@ -173,15 +182,15 @@ class BatchCreator:
     def img2array(self, img_index):
         # compute numpy array from image
         img_path = self.dataset.iloc[self.img_indices.index(img_index)]['image']
-        img_array = readImg(img_path)
+        img_array = read_img(img_path)
 
         # compute numpy array from fissure mask
         lbl_path = self.dataset.iloc[self.img_indices.index(img_index)]['fissuremask']
-        lbl_array = readImg(lbl_path)
+        lbl_array = read_img(lbl_path)
 
         # compute numpy array from lung mask
         msk_path = self.dataset.iloc[self.img_indices.index(img_index)]['lungmask']
-        msk_array = readImg(msk_path)
+        msk_array = read_img(msk_path)
         return img_array, lbl_array, msk_array
 
     def checkEmpty(self, b_samples, fc_samples, fi_samples, batch_division):
