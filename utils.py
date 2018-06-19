@@ -8,6 +8,7 @@ import numpy as np
 from itertools import product
 
 import keras
+from keras.utils import to_categorical
 from keras import backend as K
 
 
@@ -39,7 +40,7 @@ class BatchGenerator(keras.utils.Sequence):
         for i, idx in enumerate(idxs):
             X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:, :, :, np.newaxis]
             y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:, :, :, np.newaxis]
-        return X, y
+        return X, to_categorical(y, 3)
 
     def __len__(self):
         """Amount of batches per epoch."""
@@ -47,7 +48,6 @@ class BatchGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         """If sample function is provided apply sampling function to indices and labels to get new samples."""
-        print(self.sampling)
         if self.sampling:
             self.samples, _ = self.sampling(self.indices, self.labels)
 
