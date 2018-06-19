@@ -20,7 +20,6 @@ class BatchGenerator(keras.utils.Sequence):
         self.output_size = get_output_size(patch_size)
         self.images = [read_img(path) for path in data['image'].values]
         self.fissure_masks = [read_img(path) for path in data['fissuremask'].values]
-        self.lung_masks = [read_img(path) for path in data['lungmask'].values]
         # Generate coordinates at every step leaving a border of half the patch size
         indices, labels = [], []
         zh, yh, xh = int(patch_size[0]/2), int(patch_size[1]/2), int(patch_size[2]/2)
@@ -31,6 +30,7 @@ class BatchGenerator(keras.utils.Sequence):
                 labels.append(np.amax(self.get_patch((z, y, x), self.fissure_masks[i], self.output_size)))
         self.indices, self.labels = np.array(indices), np.array(labels)
         self.samples = self.indices
+        self.on_epoch_end()
 
     def __getitem__(self, index):
         """Get a new batch of input images and corresponding fracture masks."""
