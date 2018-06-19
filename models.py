@@ -8,7 +8,7 @@ from keras.layers.merge import concatenate
 
 from utils import dice_coefficient, dice_coefficient_loss, weighted_categorical_crossentropy
 
-def unet(input_shape, nr_of_labels=3, features=32):
+def unet(input_shape, nr_of_labels=5, features=32):
     # Downward path
 
     levels = list()
