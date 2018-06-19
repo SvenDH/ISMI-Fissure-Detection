@@ -8,7 +8,7 @@ from keras.layers.merge import concatenate
 
 from utils import dice_coefficient, dice_coefficient_loss, weighted_categorical_crossentropy
 
-def unet(input_shape, features=32):
+def unet(input_shape, nr_of_labels=3, features=32):
     # Downward path
 
     levels = list()
@@ -107,7 +107,7 @@ def unet(input_shape, features=32):
     layer2 = BatchNormalization()(layer2)
     layer2 = Activation('relu')(layer2)
 
-    final = Conv3D(1, (1, 1, 1))(
+    final = Conv3D(nr_of_labels, (1, 1, 1))(
         layer2)  # 1 output channel due to segmentation image being grayscale like input image patch
     final = Activation('softmax')(final)
     model = Model(inputs=inputs, outputs=final)
