@@ -342,16 +342,9 @@ def weighted_categorical_crossentropy(weights):
 	
 def dice_coefficient(y_true, y_pred, smooth=1.):
     """Loss calculation for 3D U-net"""
-    bglabel = 0
-    cflabel = 2
-    iflabel = 4
-    importance_factors = [0.001, 0.5, 0.5]
+
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
-
-    penalty_mask = (y_true_f == bglabel) * importance_factors[0]\
-        + (y_true_f == cflabel) * importance_factors[1]\
-        + (y_true_f == iflabel) * importance_factors[2]
 
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
