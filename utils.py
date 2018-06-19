@@ -40,7 +40,7 @@ class BatchGenerator(keras.utils.Sequence):
         for i, idx in enumerate(idxs):
             X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:, :, :, np.newaxis]
             y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:, :, :, np.newaxis]
-        return X, to_categorical(y, 3)
+        return X, to_categorical(y, 5)
 
     def __len__(self):
         """Amount of batches per epoch."""
@@ -282,6 +282,9 @@ def get_exact_csv_set(folder, label):
 
     #function taken from https://github.com/tensorflow/tensorflow/blob/r1.8/tensorflow/python/keras/_impl/keras/backend.py
     #adapted to weigh categories
+
+
+"""
 def weighted_categorical_crossentropy(target, output):
     #decide on weights
     bglabel = 0
@@ -302,20 +305,46 @@ def weighted_categorical_crossentropy(target, output):
     output = K.clip(output, K.epsilon(), 1. - K.epsilon())
     
     return -K.sum(target * K.log(output) * weights)
+"""
+
+"""
+A weighted version of categorical_crossentropy for keras (2.0.6). This lets you apply a weight to unbalanced classes.
+@url: https://gist.github.com/wassname/ce364fddfc8a025bfab4348cf5de852d
+@author: wassname
+"""
+def weighted_categorical_crossentropy(weights):
+    """
+    A weighted version of keras.objectives.categorical_crossentropy
+
+    Variables:
+        weights: numpy array of shape (C,) where C is the number of classes
+
+    Usage:
+        weights = np.array([0.5,2,10]) # Class one at 0.5, class 2 twice the normal weights, class 3 10x.
+        loss = weighted_categorical_crossentropy(weights)
+        model.compile(loss=loss,optimizer='adam')
+    """
+
+    weights = K.variable(weights)
+
+    def loss(y_true, y_pred):
+        # scale predictions so that the class probas of each sample sum to 1
+        y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
+        # clip to prevent NaN's and Inf's
+        y_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())
+        # calc
+        loss = y_true * K.log(y_pred) * weights
+        loss = -K.sum(loss, -1)
+        return loss
+
+    return loss
 	
 	
 def dice_coefficient(y_true, y_pred, smooth=1.):
     """Loss calculation for 3D U-net"""
-    bglabel = 0
-    cflabel = 2
-    iflabel = 4
-    importance_factors = [0.001, 0.5, 0.5]
+
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
-
-    penalty_mask = (y_true_f == bglabel) * importance_factors[0]\
-        + (y_true_f == cflabel) * importance_factors[1]\
-        + (y_true_f == iflabel) * importance_factors[2]
 
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
