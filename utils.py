@@ -40,7 +40,7 @@ class BatchGenerator(keras.utils.Sequence):
         for i, idx in enumerate(idxs):
             X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:, :, :, np.newaxis]
             y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:, :, :, np.newaxis]
-        return X, to_categorical(y, 3)
+        return X, to_categorical(y, 5)
 
     def __len__(self):
         """Amount of batches per epoch."""
