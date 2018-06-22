@@ -54,7 +54,6 @@ if __name__ == "__main__":
         print(test_data.shape)
     
         output = model.predict_generator(test_generator, steps=len(test_generator), verbose=1)
-        
         #output = shift_and_stitch(model, test_data, patch_size, patch_size, (44,44,28), 3)
-    
+        np.save('test_patch_segmentations',output)
 
