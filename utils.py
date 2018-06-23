@@ -75,6 +75,23 @@ def batch_balance_sampling(X, y):
     return X, y
 
 
+def shift_and_stitch(model, image, patch_size, output_size, stride):
+    """Creates output image from patches processed by the model"""
+    pz, py, px = [p//2 for p in patch_size]
+    oz, oy, ox = [p // 2 for p in output_size]
+    sz, sy, sx = stride
+
+    Y = np.zeros(image.shape)
+    c, h, w = image.shape
+    coords = product(range(pz, c-pz,sz),range(py,h-py,sy),range(px,w-px,sx))
+    for z, y, x in coords:
+        X_in = BatchGenerator.get_patch((z,y,x), image, patch_size)[np.newaxis, :, :, :, np.newaxis]
+        Y_out = model.predict(X_in, batch_size=1)
+        _, d, h, l, _ = Y_out.shape
+        Y[z-oz:z+oz, y-oy:y+oy, x-ox:x+ox] = np.argmax(Y_out.squeeze(), axis=-1)
+    return Y
+
+
 def get_output_size(input_size):
     """Calculation to get the output shape of U-Net given the input shape."""
     output_size = (((((((np.floor((np.floor((np.floor((np.array(input_size)-4)/2)-4)/2)-4)/2)-4)*2)-4)*2)-4)*2)-4)
