@@ -112,6 +112,7 @@ def unet(input_shape, nr_of_labels=5, features=32):
     final = Activation('softmax')(final)
     model = Model(inputs=inputs, outputs=final)
 
-    model.compile(optimizer=Adam(lr=0.001), loss=weighted_categorical_crossentropy([0.001, 1.0, 0.4, 1.0, 0.6]), metrics=[dice_coefficient])
+    weights = [1.00153150e+00, 1.0, 7.52326739e+02, 1.0, 5.00137535e+03]
+    model.compile(optimizer=Adam(lr=0.001), loss=weighted_categorical_crossentropy(weights), metrics=[dice_coefficient])
     model.summary()
     return model
