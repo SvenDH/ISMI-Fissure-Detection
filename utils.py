@@ -15,12 +15,14 @@ from keras import backend as K
 class BatchGenerator(keras.utils.Sequence):
     """Generator for keras that provides patches of images with corresponding fissure masks."""
 
-    def __init__(self, data, patch_size, step=(10, 10, 10), batch_size=8, sampling=None):
+    def __init__(self, data, patch_size, step=(10, 10, 10), batch_size=8, sampling=None, test=False):
         """Load all images and generate a list of indices for patch locations."""
         self.patch_size, self.data, self.batch_size, self.sampling = patch_size, data, batch_size, sampling
         self.output_size = get_output_size(patch_size)
         self.images = [read_img(path) for path in data['image'].values]
-        self.fissure_masks = [read_img(path) for path in data['fissuremask'].values]
+        self.test = test
+        if not self.test:
+            self.fissure_masks = [read_img(path) for path in data['fissuremask'].values]
         # Generate coordinates at every step leaving a border of half the patch size
         indices, labels = [], []
         zh, yh, xh = int(patch_size[0]/2), int(patch_size[1]/2), int(patch_size[2]/2)
@@ -28,7 +30,8 @@ class BatchGenerator(keras.utils.Sequence):
             c, h, w = image.shape
             for z, y, x in product(range(zh, c-zh, step[0]), range(yh, h-yh, step[1]), range(xh, w-xh, step[2])):
                 indices.append([i, z, y, x])  # The label of a patch is the highest value occurring in the fissure mask
-                labels.append(np.amax(self.get_patch((z, y, x), self.fissure_masks[i], self.output_size)))
+                if not self.test:
+                    labels.append(np.amax(self.get_patch((z, y, x), self.fissure_masks[i], self.output_size)))
         self.indices, self.labels = np.array(indices), np.array(labels)
         self.samples = self.indices
         self.on_epoch_end()
@@ -39,8 +42,11 @@ class BatchGenerator(keras.utils.Sequence):
         X, y = np.empty((self.batch_size, *self.patch_size, 1)), np.empty((self.batch_size, *self.output_size, 1))
         for i, idx in enumerate(idxs):
             X[i, ] = self.get_patch(idx[1:], self.images[idx[0]], self.patch_size)[:, :, :, np.newaxis]
-            y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:, :, :, np.newaxis]
-        return X, to_categorical(y, 5)
+            if not self.test:
+                y[i, ] = self.get_patch(idx[1:], self.fissure_masks[idx[0]], self.output_size)[:, :, :, np.newaxis]
+                return X, to_categorical(y, 5)
+            else:
+                return X
 
     def __len__(self):
         """Amount of batches per epoch."""
@@ -67,6 +73,23 @@ def batch_balance_sampling(X, y):
     print(ids_per_label)
 
     return X, y
+
+
+def shift_and_stitch(model, image, patch_size, output_size, stride):
+    """Creates output image from patches processed by the model"""
+    pz, py, px = [p//2 for p in patch_size]
+    oz, oy, ox = [p // 2 for p in output_size]
+    sz, sy, sx = stride
+
+    Y = np.zeros(image.shape)
+    c, h, w = image.shape
+    coords = product(range(pz, c-pz,sz),range(py,h-py,sy),range(px,w-px,sx))
+    for z, y, x in coords:
+        X_in = BatchGenerator.get_patch((z,y,x), image, patch_size)[np.newaxis, :, :, :, np.newaxis]
+        Y_out = model.predict(X_in, batch_size=1)
+        _, d, h, l, _ = Y_out.shape
+        Y[z-oz:z+oz, y-oy:y+oy, x-ox:x+ox] = np.argmax(Y_out.squeeze(), axis=-1)
+    return Y
 
 
 def get_output_size(input_size):
@@ -276,6 +299,23 @@ def load_training_set(folder):
 
     return trainSet
 
+def load_test_set(folder):
+    file_list = load_unique_image_names(folder)
+    
+    test_set = []
+    for file in file_list:
+        file_path = folder + '/' + file
+        image = lung_mask = None
+        try:
+            image = file_path + '.mhd'
+            lung_mask = file_path + '_lm.mhd'
+            test_set.append({'name': file, 
+                             'image': image,
+                             'lungmask': lung_mask})
+        except :
+            print("Error reading file: " + file)
+
+    return test_set
 
 def get_exact_csv_set(folder, label):
     return pd.read_csv(folder + '/LUT-' + label + '.csv')
