@@ -91,6 +91,11 @@ def shift_and_stitch(model, image, patch_size, output_size, stride):
         Y[z-oz:z+oz, y-oy:y+oy, x-ox:x+ox] = np.argmax(Y_out.squeeze(), axis=-1)
     return Y
 
+def completeness(pred_segm):
+    """Calculate completeness from fissure labels"""
+    _, counts = np.unique(pred_segm, return_counts=True)
+    return counts[1] / (counts[2] + counts[1])
+
 
 def get_output_size(input_size):
     """Calculation to get the output shape of U-Net given the input shape."""
