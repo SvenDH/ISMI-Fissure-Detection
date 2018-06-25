@@ -405,3 +405,20 @@ def save_submission(filename, results):
     writer = open(filename, "w")
     writer.write(out)
     writer.close()
+	
+	
+def calc_percentage(img, mask):
+    #nu nog iets met mask doen
+    mask = mask == 3
+    img = img * mask
+    counts = np.unique(img, return_counts=True)
+    
+    complete = counts[1][1]
+    if len(counts[0])<=1:
+        print(counts)
+        return 999
+    if len(counts[0])>2:
+        incomplete = counts[1][2]
+    else:
+        incomplete = 0
+    return complete / (complete + incomplete)
