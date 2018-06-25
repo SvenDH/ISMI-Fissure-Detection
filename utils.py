@@ -65,16 +65,6 @@ class BatchGenerator(keras.utils.Sequence):
         return image[int(z-(c/2)):int(z+(c/2)), int(y-(h/2)):int(y+(h/2)), int(x-(w/2)):int(x+(w/2))]
 
 
-def batch_balance_sampling(X, y):
-    ids_per_label = {}
-    for c in np.unique(y):
-        ids_per_label[c] = np.where(y==c)
-        np.random.shuffle(ids_per_label)
-    print(ids_per_label)
-
-    return X, y
-
-
 def shift_and_stitch(model, image, patch_size, output_size, stride):
     """Creates output image from patches processed by the model"""
     pz, py, px = [p//2 for p in patch_size]
@@ -90,11 +80,6 @@ def shift_and_stitch(model, image, patch_size, output_size, stride):
         _, d, h, l, _ = Y_out.shape
         Y[z-oz:z+oz, y-oy:y+oy, x-ox:x+ox] = np.argmax(Y_out.squeeze(), axis=-1)
     return Y
-
-def completeness(pred_segm):
-    """Calculate completeness from fissure labels"""
-    _, counts = np.unique(pred_segm, return_counts=True)
-    return counts[1] / (counts[2] + counts[1])
 
 
 def get_output_size(input_size):
@@ -397,6 +382,12 @@ def dice_coefficient(y_true, y_pred, smooth=1.):
 
 def dice_coefficient_loss(y_true, y_pred):
     return -dice_coefficient(y_true, y_pred)
+
+
+def completeness(pred_segm):
+    """Calculate completeness from fissure labels"""
+    _, counts = np.unique(pred_segm, return_counts=True)
+    return counts[1] / (counts[2] + counts[1])
 
 
 def save_submission(filename, results):
