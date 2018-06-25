@@ -397,3 +397,20 @@ def dice_coefficient(y_true, y_pred, smooth=1.):
 
 def dice_coefficient_loss(y_true, y_pred):
     return -dice_coefficient(y_true, y_pred)
+
+
+def save_submission(filename, results):
+    '''
+    Results:
+        Array of tuples consisting of ['test_file', 'prediction']. Example: [['t01', 'a'], ['t02', 'b']]
+    
+    Example:
+        save_submission('testRUBEN.csv', tupleArr)
+    '''
+    out = 'case,class\n'
+    for file, pred in results:
+        out += file + ',' + pred + '\n'
+    
+    writer = open(filename, "w")
+    writer.write(out)
+    writer.close()
